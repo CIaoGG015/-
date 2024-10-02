@@ -1,0 +1,141 @@
+#CodePlus 2019 3月月赛 Div.1 A题 TREE
+#include<bits/stdc++.h>
+#define Fst first
+#define Snd second
+#define RG register
+#define mp make_pair
+#define mem(a,b) memset(a,b,sizeof(a))
+using namespace std;
+typedef long long LL;
+typedef long double LD;
+typedef unsigned int UI;
+typedef unsigned long long ULL;
+template<typename T> inline void read(T& x) {
+	char c = getchar();
+	bool f = false;
+	for (x = 0; !isdigit(c); c = getchar()) {
+		if (c == '-') {
+			f = true;
+		}
+	}
+	for (; isdigit(c); c = getchar()) {
+		x = x * 10 + c - '0';
+	}
+	if (f) {
+		x = -x;
+	}
+}
+template<typename T, typename... U> inline void read(T& x, U& ... y) {
+	read(x), read(y...);
+}
+const int MAX=1e5,N=MAX+10,P=998244353,mlog=17;
+int pri[N];
+bool sign[N];
+int n,m,K,cnt;
+int H[N],part[N];
+int Sum[N][20];
+int S0[N],S1[N],ML[N],MR[N],ANS[N];
+struct Data {
+	int l,r,id;
+	Data () {}
+	Data (int a,int b,int c) :l(a),r(b),id(c) {}
+}Q[N];
+vector<Data> G[N][2];
+struct PR {
+	int v,t;
+};
+vector<PR> V[N];
+void Prepare() {
+	for(int i=2;i<=MAX;++i) {
+		if(!sign[i]) pri[++cnt]=i;
+		for(int j=1;i*pri[j]<=MAX;++j) {
+			sign[i*pri[j]]=true;
+			if(i%pri[j]==0) break;
+		}
+	}
+	for(int i=1;i<=cnt;++i) {
+		for(int j=pri[i];j<=MAX;j+=pri[i]) {
+			int x=j,t=0;
+			while(x%pri[i]==0) x/=pri[i],++t;
+			V[j].push_back((PR){pri[i],t});
+		}
+		for(int j=1;j<=mlog;++j) Sum[pri[i]][j]=1;
+	}
+}
+bool cmp(Data A,Data B) {
+	return part[A.l]==part[B.l]?A.r<B.r:part[A.l]<part[B.l];
+}
+int Pow(int a,int k) {
+	int res=1;
+	for(int i=k;i;i>>=1) {
+		if(i&1) res=1ll*res*a%P;
+		a=1ll*a*a%P;
+	}
+	return res;
+}
+//#define rua
+int main() {
+//	ios::sync_with_stdio(false);
+#ifdef rua
+	freopen("GG.in","r",stdin);
+#endif
+	Prepare();
+	read(n,m);
+	int Base=sqrt(n),ID=1,now=0;
+	for(int i=1;i<=n;++i) {
+		read(H[i]); part[i]=ID;
+		if(now==Base-1) ++ID,now=0;
+		else ++now;
+	}
+	for(int i=1;i<=m;++i) read(Q[i].l,Q[i].r),Q[i].id=i;
+	sort(Q+1,Q+m+1,cmp);
+	int L=Q[1].r+1,R=Q[1].r;
+	for(int i=1;i<=m;++i) {
+		if(L<Q[i].l) G[R][0].push_back(Data(L,Q[i].l-1,i));
+		else if(L>Q[i].l) G[R][0].push_back(Data(Q[i].l,L-1,i));
+		L=Q[i].l;
+		if(R<Q[i].r) G[L-1][1].push_back(Data(R+1,Q[i].r,i));
+		else if(R>Q[i].r) G[L-1][1].push_back(Data(Q[i].r+1,R,i));
+		R=Q[i].r;
+		ML[i]=MR[i]=1;
+	}
+	S0[0]=S1[0]=1;
+	for(int i=1;i<=n;++i) {
+		S0[i]=S0[i-1]; S1[i]=S1[i-1];
+		for(auto dt: V[H[i]]) {
+			int v=dt.v,t=dt.t;
+			S0[i]=1ll*S0[i]*Sum[v][t]%P;
+			for(int j=1;j<=mlog;++j) Sum[v][j]=1ll*Sum[v][j]*Pow(v,min(j,t))%P;
+			S1[i]=1ll*S1[i]*Sum[v][t]%P;
+		}
+		for(auto t: G[i][0]) {
+			ML[t.id]=1;
+			for(int	j=t.l;j<=t.r;++j) {
+				for(auto dt: V[H[j]]) {
+					ML[t.id]=1ll*ML[t.id]*Sum[dt.v][dt.t]%P;
+				}
+			}
+		}
+		for(auto t: G[i][1]) {
+			MR[t.id]=1;
+			for(int j=t.l;j<=t.r;++j) {
+				for(auto dt: V[H[j]]) {
+					MR[t.id]=1ll*MR[t.id]*Sum[dt.v][dt.t]%P;
+				}
+			}
+		}
+	}
+	L=Q[1].r+1; R=Q[1].r;
+	int res=1;
+	for(int i=1;i<=m;++i) {
+		if(L<Q[i].l) res=1ll*res*Pow(1ll*ML[i]%P*Pow(1ll*S1[Q[i].l-1]*Pow(S1[L-1],P-2)%P,P-2)%P,P-2)%P;
+		else if(L>Q[i].l) res=1ll*res*ML[i]%P*Pow(1ll*S1[L-1]*Pow(S1[Q[i].l-1],P-2)%P,P-2)%P;
+		L=Q[i].l;
+		if(R<Q[i].r) res=1ll*res*S0[Q[i].r]%P*Pow(S0[R],P-2)%P*Pow(MR[i],P-2)%P;
+ else if(R>Q[i].r) res=1ll*res*Pow(1ll*S0[R]%P*Pow(S0[Q[i].r],P-2)%P*Pow(MR[i],P-2)%P,P-2)%P;
+        R=Q[i].r;
+        ANS[Q[i].id]=res;
+	}
+	for(int i=1;i<=m;++i) printf("%d\n",ANS[i]);
+	return 0;
+}
