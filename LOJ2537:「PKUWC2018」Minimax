@@ -1,0 +1,139 @@
+#include<bits/stdc++.h>
+#define Fst first
+#define Snd second
+#define RG register
+#define mp make_pair
+#define mem(a,b) memset(a,b,sizeof(a))
+using namespace std;
+typedef long long LL;
+typedef long double LD;
+typedef unsigned int UI;
+typedef unsigned long long ULL;
+template<typename T> inline void read(T& x) {
+	char c = getchar();
+	bool f = false;
+	for (x = 0; !isdigit(c); c = getchar()) {
+		if (c == '-') {
+			f = true;
+		}
+	}
+	for (; isdigit(c); c = getchar()) {
+		x = x * 10 + c - '0';
+	}
+	if (f) {
+		x = -x;
+	}
+}
+template<typename T, typename... U> inline void read(T& x, U& ... y) {
+	read(x), read(y...);
+}
+const int N=3e5+10,P=998244353;
+int n,p,cnt,size;
+int G[N],V[N],head[N],root[N];
+bool YES[N];
+map<int,int> S;
+struct Node {
+	int sum,lazy;
+	int lo,ro;
+}Tr[N*20];
+#define L Tr[o].lo
+#define R Tr[o].ro
+struct SegmentTree {
+	void Modify(int l,int r,int &o,int pos) {
+		o=++size;
+		Tr[o].sum=1; Tr[o].lazy=1;
+		if(l==r) return;
+		int mid=l+r>>1;
+		if(pos<=mid) Modify(l,mid,L,pos);
+		else Modify(mid+1,r,R,pos);
+	}
+	void Down(int o,int val) {
+		if(!o) return;
+		Tr[o].sum=1ll*Tr[o].sum*val%P;
+		Tr[o].lazy=1ll*Tr[o].lazy*val%P;
+	}
+	void Pushdown(int o) {
+		if(Tr[o].lazy!=1) {
+			Down(L,Tr[o].lazy);
+			Down(R,Tr[o].lazy);
+			Tr[o].lazy=1;
+		}
+	}
+	void Merge(int l,int r,int &x,int y,int a,int b,int p) {
+		if(!x||!y) {
+			if(!x) Down(y,(1ll*(1-b+P)%P*p%P+1ll*(1-p+P)%P*b%P)%P);
+			else Down(x,(1ll*(1-a+P)%P*p%P+1ll*(1-p+P)%P*a%P)%P);
+			x=x+y;
+			return;
+		}
+		Pushdown(x); Pushdown(y);
+		int mid=l+r>>1;
+		Merge(l,mid,Tr[x].lo,Tr[y].lo,(a+Tr[Tr[y].ro].sum)%P,(b+Tr[Tr[x].ro].sum)%P,p); Merge(mid+1,r,Tr[x].ro,Tr[y].ro,a,b,p);
+		Tr[x].sum=Tr[Tr[x].lo].sum+Tr[Tr[x].ro].sum;
+		if(Tr[x].sum>=P) Tr[x].sum-=P;
+	}
+	int Query(int l,int r,int o,int pos) {
+		if(l==r) return Tr[o].sum;
+		Pushdown(o);
+		int mid=l+r>>1,t;
+		if(pos<=mid) t=Query(l,mid,L,pos);
+		else t=Query(mid+1,r,R,pos);
+		Tr[o].sum=Tr[L].sum+Tr[R].sum;
+		if(Tr[o].sum>=P) Tr[o].sum-=P;
+		return t;
+	}
+}SgT;
+struct Edge {
+	int to,last;
+	Edge () {}
+	Edge (int a,int b) :to(a),last(b) {}
+}edge[N];
+void ADD(int a,int b) {
+	edge[++p]=Edge(b,head[a]); head[a]=p;
+}
+void DFS(int u) {
+	if(!YES[u]) {
+		SgT.Modify(1,cnt,root[u],S[G[u]]);
+		return;
+	}
+	for(int i=head[u];i;i=edge[i].last) {
+		int v=edge[i].to;
+		DFS(v);
+		if(!root[u]) root[u]=root[v];
+		else SgT.Merge(1,cnt,root[u],root[v],0,0,G[u]);
+	}
+}
+int Pow(int a,int k) {
+	int res=1;
+	for(int i=k;i;i>>=1) {
+		if(i&1) res=1ll*res*a%P;
+		a=1ll*a*a%P;
+	}
+	return res;
+}
+int main() {
+#ifdef rua
+	freopen("GG.in","r",stdin);
+#endif
+	read(n);
+	for(int i=1;i<=n;++i) {
+		int fa; read(fa);
+		if(fa) ADD(fa,i),YES[fa]=true;
+	}
+	int Inv=Pow(10000,P-2);
+	for(int i=1;i<=n;++i) {
+		read(G[i]);
+		if(!YES[i]) V[++cnt]=G[i];
+		else G[i]=1ll*G[i]*Inv%P;
+	}
+	sort(V+1,V+cnt+1);
+	for(int i=1;i<=cnt;++i) S[V[i]]=i;
+	DFS(1);
+	int res=0;
+	for(int i=1;i<=cnt;++i) {
+		int t=SgT.Query(1,cnt,root[1],i);
+		(res+=1ll*i*V[i]%P*t%P*t%P)%=P;
+	}
+	printf("%d\n",res);
+	return 0;
+}
